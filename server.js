@@ -11,7 +11,7 @@ const app = express();
 // CORS config
 app.use(
   cors({
-    origin: "http://localhost:8080",
+    origin: "https://bingo-frontind.netlify.app",
     methods: "GET,POST,PUT,DELETE,OPTIONS",
     allowedHeaders: "Content-Type, Authorization",
   })
