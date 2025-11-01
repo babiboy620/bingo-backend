@@ -86,15 +86,23 @@ app.post("/api/login", async (req, res) => {
     if (!phone || !password)
       return res.status(400).json({ error: "phone and password required" });
 
+<<<<<<< HEAD
     const result = await pool.query("SELECT * FROM users WHERE phone=$1", [
       phone,
     ]);
+=======
+    const result = await pool.query("SELECT * FROM users WHERE phone=$1", [phone]);
+>>>>>>> 88b0bea498a73b2d91c073a90895dc022a009c45
     if (result.rows.length === 0)
       return res.status(401).json({ error: "Invalid credentials" });
 
     const user = result.rows[0];
+<<<<<<< HEAD
     if (!user.isactive)
       return res.status(403).json({ error: "Account is blocked" });
+=======
+    if (!user.isactive) return res.status(403).json({ error: "Account is blocked" });
+>>>>>>> 88b0bea498a73b2d91c073a90895dc022a009c45
 
     const ok = await bcrypt.compare(password, user.passwordhash);
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
@@ -125,9 +133,13 @@ app.post("/api/agents/create", authMiddleware("owner"), async (req, res) => {
     if (!phone || !password)
       return res.status(400).json({ error: "phone and password required" });
 
+<<<<<<< HEAD
     const existing = await pool.query("SELECT * FROM users WHERE phone=$1", [
       phone,
     ]);
+=======
+    const existing = await pool.query("SELECT * FROM users WHERE phone=$1", [phone]);
+>>>>>>> 88b0bea498a73b2d91c073a90895dc022a009c45
     if (existing.rows.length > 0)
       return res.status(400).json({ error: "Phone already registered" });
 
@@ -158,6 +170,7 @@ app.get("/api/agents", authMiddleware("owner"), async (req, res) => {
 });
 
 // ----------------- Owner: Block/Unblock Agent -----------------
+<<<<<<< HEAD
 app.post(
   "/api/agents/:id/toggle",
   authMiddleware("owner"),
@@ -203,6 +216,40 @@ app.delete("/api/agents/:id", authMiddleware("owner"), async (req, res) => {
       success: true,
       message: "Agent and games deleted successfully",
     });
+=======
+app.post("/api/agents/:id/toggle", authMiddleware("owner"), async (req, res) => {
+  try {
+    const agentId = req.params.id;
+
+    const result = await pool.query(
+      "SELECT isactive FROM users WHERE id=$1 AND role='agent'",
+      [agentId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: "Agent not found" });
+
+    const current = result.rows[0].isactive;
+    const newStatus = !current;
+
+    await pool.query(
+      "UPDATE users SET isactive=$1 WHERE id=$2",
+      [newStatus, agentId]
+    );
+
+    res.json({ success: true, message: newStatus ? "Agent unblocked" : "Agent blocked" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+// ----------------- Owner: Delete Agent -----------------
+app.delete("/api/agents/:id", authMiddleware("owner"), async (req, res) => {
+  try {
+    const agentId = req.params.id;
+    await pool.query("DELETE FROM games WHERE agentid=$1", [agentId]);
+    await pool.query("DELETE FROM users WHERE id=$1 AND role='agent'", [agentId]);
+    res.json({ success: true, message: "Agent and games deleted successfully" });
+>>>>>>> 88b0bea498a73b2d91c073a90895dc022a009c45
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error", details: err.message });
@@ -214,9 +261,13 @@ app.post("/api/games/start", authMiddleware("agent"), async (req, res) => {
   try {
     const { players, pot, entryfee, cartelas, winMode } = req.body || {};
     if (!players || !pot || !entryfee)
+<<<<<<< HEAD
       return res
         .status(400)
         .json({ error: "Missing players, pot or entryFee" });
+=======
+      return res.status(400).json({ error: "Missing players, pot or entryFee" });
+>>>>>>> 88b0bea498a73b2d91c073a90895dc022a009c45
 
     const insert = await pool.query(
       `INSERT INTO games (agentid, ownerid, players, pot, entryfee, date, profit, winnermoney, cartelas, called, winmode) 
@@ -247,10 +298,17 @@ app.post("/api/games/start", authMiddleware("agent"), async (req, res) => {
 app.post("/api/games/:id/called", authMiddleware("agent"), async (req, res) => {
   try {
     const { numbers } = req.body || {};
+<<<<<<< HEAD
     await pool.query("UPDATE games SET called=$1 WHERE id=$2", [
       JSON.stringify(numbers || []),
       req.params.id,
     ]);
+=======
+    await pool.query(
+      "UPDATE games SET called=$1 WHERE id=$2",
+      [JSON.stringify(numbers || []), req.params.id]
+    );
+>>>>>>> 88b0bea498a73b2d91c073a90895dc022a009c45
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -262,11 +320,18 @@ app.post("/api/games/:id/called", authMiddleware("agent"), async (req, res) => {
 app.post("/api/games/:id/finish", authMiddleware("agent"), async (req, res) => {
   try {
     const { numbers, status } = req.body || {};
+<<<<<<< HEAD
     await pool.query("UPDATE games SET called=$1, status=$2 WHERE id=$3", [
       JSON.stringify(numbers || []),
       status || "completed",
       req.params.id,
     ]);
+=======
+    await pool.query(
+      "UPDATE games SET called=$1, status=$2 WHERE id=$3",
+      [JSON.stringify(numbers || []), status || "completed", req.params.id]
+    );
+>>>>>>> 88b0bea498a73b2d91c073a90895dc022a009c45
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -277,6 +342,7 @@ app.post("/api/games/:id/finish", authMiddleware("agent"), async (req, res) => {
 // ----------------- Get Game Info -----------------
 app.get("/api/games/:id", async (req, res) => {
   try {
+<<<<<<< HEAD
     const result = await pool.query("SELECT * FROM games WHERE id=$1", [
       req.params.id,
     ]);
@@ -287,6 +353,15 @@ app.get("/api/games/:id", async (req, res) => {
     game.cartelas = JSON.parse(game.cartelas || "[]");
     game.called = JSON.parse(game.called || "[]");
 
+=======
+    const result = await pool.query("SELECT * FROM games WHERE id=$1", [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: "Game not found" });
+
+    const game = result.rows[0];
+    game.cartelas = JSON.parse(game.cartelas || "[]");
+    game.called = JSON.parse(game.called || "[]");
+
+>>>>>>> 88b0bea498a73b2d91c073a90895dc022a009c45
     res.json({ success: true, game });
   } catch (err) {
     console.error(err);
@@ -297,6 +372,7 @@ app.get("/api/games/:id", async (req, res) => {
 // ----------------- Get Cartelas -----------------
 app.get("/api/games/:id/cartelas", async (req, res) => {
   try {
+<<<<<<< HEAD
     const result = await pool.query("SELECT cartelas FROM games WHERE id=$1", [
       req.params.id,
     ]);
@@ -307,12 +383,43 @@ app.get("/api/games/:id/cartelas", async (req, res) => {
       success: true,
       cartelas: JSON.parse(result.rows[0].cartelas || "[]"),
     });
+=======
+    const result = await pool.query("SELECT cartelas FROM games WHERE id=$1", [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: "Game not found" });
+
+    res.json({ success: true, cartelas: JSON.parse(result.rows[0].cartelas || "[]") });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
+// ----------------- Agent: End Game (Update Winner & Profit) -----------------
+app.post("/api/games/:id/end", authMiddleware("agent"), async (req, res) => {
+  try {
+    const { winnerMoney } = req.body || {};
+    const gameId = req.params.id;
+    if (!winnerMoney) return res.status(400).json({ error: "Winner money required" });
+
+    const game = await pool.query("SELECT pot FROM games WHERE id=$1", [gameId]);
+    if (game.rows.length === 0) return res.status(404).json({ error: "Game not found" });
+
+    const profit = game.rows[0].pot - winnerMoney;
+    await pool.query("UPDATE games SET winnermoney=$1, profit=$2 WHERE id=$3", [
+      winnerMoney,
+      profit,
+      gameId,
+    ]);
+
+    res.json({ success: true, gameId, profit });
+>>>>>>> 88b0bea498a73b2d91c073a90895dc022a009c45
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+<<<<<<< HEAD
 // ----------------- Agent: End Game (Update Winner & Profit) -----------------
 app.post("/api/games/:id/end", authMiddleware("agent"), async (req, res) => {
   try {
@@ -341,6 +448,8 @@ app.post("/api/games/:id/end", authMiddleware("agent"), async (req, res) => {
   }
 });
 
+=======
+>>>>>>> 88b0bea498a73b2d91c073a90895dc022a009c45
 // ----------------- Owner: Reports PDF -----------------
 app.get("/api/reports/owner", authMiddleware("owner"), async (req, res) => {
   try {
@@ -354,10 +463,7 @@ app.get("/api/reports/owner", authMiddleware("owner"), async (req, res) => {
 
     const doc = new PDFDocument({ margin: 30 });
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=owner_report.pdf"
-    );
+    res.setHeader("Content-Disposition", "attachment; filename=owner_report.pdf");
     doc.pipe(res);
 
     doc.fontSize(20).text("🎯 Bingo House — Owner Report", { align: "center" });
@@ -372,42 +478,38 @@ app.get("/api/reports/owner", authMiddleware("owner"), async (req, res) => {
     for (const g of games.rows) {
       if (currentAgent !== g.agentname) {
         if (currentAgent !== null) {
-          doc
-            .font("Helvetica-Bold")
-            .text(`Total Profit: ${totalProfitAgent} birr`);
+          doc.font("Helvetica-Bold").text(`Total Profit: ${totalProfitAgent} birr`);
           doc.moveDown();
         }
         currentAgent = g.agentname;
         totalProfitAgent = 0;
         doc.fontSize(16).text(`👤 Agent: ${g.agentname}`, { underline: true });
         doc.moveDown(0.3);
-        doc
-          .fontSize(12)
-          .text("Game ID | Date | Players | Pot | Winner | Profit");
+        doc.fontSize(12).text("Game ID | Date | Players | Pot | Winner | Profit");
         doc.moveDown(0.3);
       }
       totalProfitAgent += parseFloat(g.profit || 0);
       totalProfitAll += parseFloat(g.profit || 0);
 
       doc.text(
+<<<<<<< HEAD
         `${g.id} | ${new Date(g.date).toLocaleDateString()} | ${g.players} | ${
           g.pot
         } | ${g.winnermoney} | ${g.profit}`
+=======
+        `${g.id} | ${new Date(g.date).toLocaleDateString()} | ${g.players} | ${g.pot} | ${g.winnermoney} | ${g.profit}`
+>>>>>>> 88b0bea498a73b2d91c073a90895dc022a009c45
       );
     }
 
     doc.moveDown();
     doc.font("Helvetica-Bold").text(`Total Profit: ${totalProfitAgent} birr`);
     doc.moveDown(2);
-    doc.text(`🏁 Grand Total Profit (All Agents): ${totalProfitAll} birr`, {
-      align: "right",
-    });
+    doc.text(`🏁 Grand Total Profit (All Agents): ${totalProfitAll} birr`, { align: "right" });
     doc.end();
   } catch (err) {
     console.error(err);
-    res
-      .status(500)
-      .json({ error: "Failed to generate PDF", details: err.message });
+    res.status(500).json({ error: "Failed to generate PDF", details: err.message });
   }
 });
 
