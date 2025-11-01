@@ -2,7 +2,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { sql, poolPromise } = require("./db");
+const { pool, query } = require("./db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
@@ -44,7 +44,7 @@ function authMiddleware(requiredRole) {
 // ----------------- Test Route -----------------
 app.get("/", async (req, res) => {
   try {
-    const pool = await poolPromise;
+    const client = await pool.connect();
     const result = await pool
       .request()
       .query("SELECT GETDATE() AS CurrentTime");
@@ -62,8 +62,8 @@ app.post("/api/create-first-owner", async (req, res) => {
     if (!phone || !password)
       return res.status(400).json({ error: "phone and password required" });
 
-    const pool = await poolPromise;
-    const owners = await pool
+   const client = await pool.connect();
+ const owners = await pool
       .request()
       .query("SELECT COUNT(*) AS cnt FROM Users WHERE Role = 'owner'");
     if (owners.recordset[0].cnt > 0) {
@@ -96,7 +96,7 @@ app.post("/api/login", async (req, res) => {
     if (!phone || !password)
       return res.status(400).json({ error: "phone and password required" });
 
-    const pool = await poolPromise;
+    const client = await pool.connect();
     const result = await pool
       .request()
       .input("phone", sql.NVarChar, phone)
@@ -141,8 +141,7 @@ app.post("/api/agents/create", authMiddleware("owner"), async (req, res) => {
     if (!phone || !password) {
       return res.status(400).json({ error: "phone and password required" });
     }
-
-    const pool = await poolPromise;
+const client = await pool.connect();
     const existing = await pool
       .request()
       .input("phone", sql.NVarChar, phone)
@@ -174,7 +173,7 @@ app.post("/api/agents/create", authMiddleware("owner"), async (req, res) => {
 // ----------------- Owner: List Agents -----------------
 app.get("/api/agents", authMiddleware("owner"), async (req, res) => {
   try {
-    const pool = await poolPromise;
+  const client = await pool.connect();
     const result = await pool
       .request()
       .query(
@@ -194,7 +193,7 @@ app.post(
   async (req, res) => {
     try {
       const agentId = req.params.id;
-      const pool = await poolPromise;
+      const client = await pool.connect();
 
       const result = await pool
         .request()
@@ -225,7 +224,7 @@ app.post(
 // ----------------- Agent: Game History -----------------
 app.get("/api/games/my-history", authMiddleware("agent"), async (req, res) => {
   try {
-    const pool = await poolPromise;
+   const client = await pool.connect();
     const result = await pool
       .request()
       .input("agentId", sql.Int, req.user.id)
@@ -248,7 +247,7 @@ app.post("/api/games/start", authMiddleware("agent"), async (req, res) => {
         .json({ error: "Missing players, pot or entryFee" });
     }
 
-    const pool = await poolPromise;
+   const client = await pool.connect();
     const insert = await pool
       .request()
       .input("AgentId", sql.Int, req.user.id)
@@ -281,7 +280,7 @@ app.post("/api/games/:id/end", authMiddleware("agent"), async (req, res) => {
       return res.status(400).json({ error: "Winner money required" });
     }
 
-    const pool = await poolPromise;
+   const client = await pool.connect();
     const game = await pool
       .request()
       .input("Id", sql.Int, gameId)
@@ -329,7 +328,7 @@ app.post("/api/games", async (req, res) => {
       return res.status(400).json({ error: "Missing game fields" });
     }
 
-    const pool = await poolPromise;
+   const client = await pool.connect();
     const insert = await pool
       .request()
       .input("AgentId", sql.Int, payload.id)
@@ -363,7 +362,7 @@ app.post("/api/games", async (req, res) => {
 // ----------------- Get Game Info -----------------
 app.get("/api/games/:id", async (req, res) => {
   try {
-    const pool = await poolPromise;
+  const client = await pool.connect();
     const result = await pool
       .request()
       .input("Id", sql.Int, req.params.id)
@@ -386,7 +385,7 @@ app.post("/api/games/:id/called", async (req, res) => {
   try {
     const body = req.body || {};
     const { numbers } = body;
-    const pool = await poolPromise;
+  const client = await pool.connect();
     await pool
       .request()
       .input("Id", sql.Int, req.params.id)
@@ -403,7 +402,7 @@ app.post("/api/games/:id/finish", async (req, res) => {
   try {
     const body = req.body || {};
     const { numbers, status } = body;
-    const pool = await poolPromise;
+  const client = await pool.connect();
     await pool
       .request()
       .input("Id", sql.Int, req.params.id)
@@ -419,7 +418,7 @@ app.post("/api/games/:id/finish", async (req, res) => {
 // ----------------- Get Cartelas -----------------
 app.get("/api/games/:id/cartelas", async (req, res) => {
   try {
-    const pool = await poolPromise;
+   const client = await pool.connect();
     const result = await pool
       .request()
       .input("Id", sql.Int, req.params.id)
@@ -438,7 +437,7 @@ app.get("/api/games/:id/cartelas", async (req, res) => {
 // ----------------- Owner: View All Games -----------------
 app.get("/api/games", authMiddleware("owner"), async (req, res) => {
   try {
-    const pool = await poolPromise;
+   const client = await pool.connect();
     const result = await pool.request().query(`
       SELECT 
         Id, AgentId, Players, Pot, Profit, WinnerMoney, WinMode, 
@@ -456,7 +455,7 @@ app.get("/api/games", authMiddleware("owner"), async (req, res) => {
 // Delete agent (Owner only)
 app.delete("/api/agents/:id", authMiddleware("owner"), async (req, res) => {
   try {
-    const pool = await poolPromise;
+  const client = await pool.connect();
     const agentId = req.params.id;
 
     // First delete all games related to this agent
@@ -486,7 +485,7 @@ const PDFDocument = require("pdfkit");
 const fs = require("fs");
 app.get("/api/reports/owner", authMiddleware("owner"), async (req, res) => {
   try {
-    const pool = await poolPromise;
+   const client = await pool.connect();
     const games = await pool.request().query(`
       SELECT g.*, u.Name AS AgentName
       FROM Games g
@@ -561,7 +560,8 @@ app.post(
   async (req, res) => {
     try {
       const agentId = req.params.id;
-      const pool = await poolPromise;
+     const client = await pool.connect();
+
 
       // Get current status
       const result = await pool
