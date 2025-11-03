@@ -2,22 +2,19 @@
 require("dotenv").config();
 const { Pool } = require("pg");
 
+// Create PostgreSQL connection pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false, // Render/Postgres usually needs SSL
+    rejectUnauthorized: false, // Required for Render's PostgreSQL
   },
 });
 
+// Test connection
 pool
   .connect()
   .then(() => console.log("✅ Connected to PostgreSQL database"))
-<<<<<<< HEAD
-  .catch((err) =>
-    console.error("❌ PostgreSQL connection failed:", err.message)
-  );
-=======
   .catch((err) => console.error("❌ PostgreSQL connection failed:", err.message));
->>>>>>> 88b0bea498a73b2d91c073a90895dc022a009c45
 
+// Export the pool
 module.exports = { pool };
