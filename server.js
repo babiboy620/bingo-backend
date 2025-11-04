@@ -133,6 +133,35 @@ app.put("/api/games/:id/complete", authenticate, async (req, res) => {
     res.status(500).json({ error: "Failed to complete game" });
   }
 });
+// ✅ Create the first owner (only if none exists)
+app.post("/api/create-first-owner", async (req, res) => {
+  try {
+    const { phone, password, name } = req.body;
+    if (!phone || !password) {
+      return res.status(400).json({ error: "Phone and password required" });
+    }
+
+    // check if any owner exists
+    const check = await pool.query("SELECT COUNT(*) FROM users WHERE role = 'owner'");
+    if (parseInt(check.rows[0].count) > 0) {
+      return res.status(400).json({ error: "Owner already exists" });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      `INSERT INTO users (phone, passwordhash, role, name, isactive)
+       VALUES ($1, $2, 'owner', $3, TRUE)
+       RETURNING id, phone, role, name`,
+      [phone, hashed, name]
+    );
+
+    res.json({ success: true, user: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to create owner", details: err.message });
+  }
+});
+
 
 // ✅ Default route
 app.get("/", (req, res) => {
