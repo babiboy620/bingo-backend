@@ -86,8 +86,13 @@ app.post("/api/login", async (req, res) => {
 });
 
 // ✅ Owner: Create Agent
-app.post("/api/agents/create", authenticate("owner"), async (req, res) => {
+app.post("/api/agents/create", authenticate, async (req, res) => {
   try {
+    // check role manually
+    if (req.user.role !== "owner") {
+      return res.status(403).json({ error: "Only owner can create agents" });
+    }
+
     const { phone, password, name } = req.body;
     if (!phone || !password)
       return res.status(400).json({ error: "Phone and password required" });
@@ -110,6 +115,7 @@ app.post("/api/agents/create", authenticate("owner"), async (req, res) => {
     res.status(500).json({ error: "Failed to create agent" });
   }
 });
+
 
 // ✅ Owner: List Agents
 app.get("/api/agents", authenticate("owner"), async (req, res) => {
