@@ -120,8 +120,6 @@ app.post("/api/agents/create", authenticate, async (req, res) => {
 // ✅ Owner: List Agents
 app.get("/api/agents", authenticate("owner"), async (req, res) => {
   try {
-    console.log("Body:", req.body);
-console.log("User:", req.user);
     const result = await pool.query(
       "SELECT id, phone, name, role, isactive FROM users WHERE role='agent' ORDER BY id ASC"
     );
@@ -164,8 +162,6 @@ app.delete("/api/agents/:id", authenticate("owner"), async (req, res) => {
 // ✅ Agent: Create Game
 app.post("/api/games", authenticate("agent"), async (req, res) => {
   try {
-    console.log("Body:", req.body);
-console.log("User:", req.user);
     const { players, pot, entryfee, winmode } = req.body;
     const result = await pool.query(
       `INSERT INTO games (agentid, ownerid, players, pot, entryfee, winmode)
