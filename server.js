@@ -120,6 +120,8 @@ app.post("/api/agents/create", authenticate, async (req, res) => {
 // ✅ Owner: List Agents
 app.get("/api/agents", authenticate("owner"), async (req, res) => {
   try {
+    console.log("Body:", req.body);
+console.log("User:", req.user);
     const result = await pool.query(
       "SELECT id, phone, name, role, isactive FROM users WHERE role='agent' ORDER BY id ASC"
     );
