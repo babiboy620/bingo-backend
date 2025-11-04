@@ -88,76 +88,84 @@ app.post("/api/login", async (req, res) => {
 // ✅ Owner: Create Agent
 app.post("/api/agents/create", authenticate, async (req, res) => {
   try {
-    // check role manually
-    if (req.user.role !== "owner") {
+    // Only owner can create agents
+    if (req.user.role !== "owner")
       return res.status(403).json({ error: "Only owner can create agents" });
-    }
 
     const { phone, password, name } = req.body;
     if (!phone || !password)
       return res.status(400).json({ error: "Phone and password required" });
 
-    const existing = await pool.query("SELECT id FROM users WHERE phone=$1", [phone]);
-    if (existing.rows.length > 0)
+    const exists = await pool.query("SELECT id FROM users WHERE phone=$1", [phone]);
+    if (exists.rows.length > 0)
       return res.status(400).json({ error: "Phone already registered" });
 
     const hashed = await bcrypt.hash(password, 10);
-    const result = await pool.query(
+    const insert = await pool.query(
       `INSERT INTO users (phone, passwordhash, role, name, isactive)
        VALUES ($1, $2, 'agent', $3, TRUE)
        RETURNING id, phone, role, name`,
       [phone, hashed, name]
     );
 
-    res.json({ success: true, agent: result.rows[0] });
+    res.json({ success: true, agent: insert.rows[0] });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: "Failed to create agent" });
+    console.error(err);
+    res.status(500).json({ error: "Failed to create agent", details: err.message });
   }
 });
 
-
-// ✅ Owner: List Agents
-app.get("/api/agents", authenticate("owner"), async (req, res) => {
+// ✅ Owner: Get all Agents
+app.get("/api/agents", authenticate, async (req, res) => {
   try {
+    if (req.user.role !== "owner")
+      return res.status(403).json({ error: "Only owner can view agents" });
+
     const result = await pool.query(
       "SELECT id, phone, name, role, isactive FROM users WHERE role='agent' ORDER BY id ASC"
     );
-    res.json({ success: true, agents: result.rows });
+    res.json(result.rows);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: "Failed to fetch agents" });
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch agents", details: err.message });
   }
 });
 
-// ✅ Owner: Toggle Block/Unblock Agent
-app.post("/api/agents/:id/toggle", authenticate("owner"), async (req, res) => {
+// ✅ Owner: Toggle (block/unblock) Agent
+app.post("/api/agents/:id/toggle", authenticate, async (req, res) => {
   try {
-    const agentId = req.params.id;
-    const current = await pool.query("SELECT isactive FROM users WHERE id=$1", [agentId]);
-    if (current.rows.length === 0)
+    if (req.user.role !== "owner")
+      return res.status(403).json({ error: "Only owner can toggle agents" });
+
+    const id = req.params.id;
+    const result = await pool.query("SELECT isactive FROM users WHERE id=$1 AND role='agent'", [id]);
+    if (result.rows.length === 0)
       return res.status(404).json({ error: "Agent not found" });
 
-    const newStatus = !current.rows[0].isactive;
-    await pool.query("UPDATE users SET isactive=$1 WHERE id=$2", [newStatus, agentId]);
-    res.json({ success: true, id: agentId, newStatus });
+    const newStatus = !result.rows[0].isactive;
+    await pool.query("UPDATE users SET isactive=$1 WHERE id=$2", [newStatus, id]);
+
+    res.json({ success: true, id, newStatus });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: "Failed to toggle agent" });
+    console.error(err);
+    res.status(500).json({ error: "Failed to toggle agent", details: err.message });
   }
 });
 
 // ✅ Owner: Delete Agent
-app.delete("/api/agents/:id", authenticate("owner"), async (req, res) => {
+app.delete("/api/agents/:id", authenticate, async (req, res) => {
   try {
-    const agentId = req.params.id;
-    await pool.query("DELETE FROM users WHERE id=$1 AND role='agent'", [agentId]);
+    if (req.user.role !== "owner")
+      return res.status(403).json({ error: "Only owner can delete agents" });
+
+    await pool.query("DELETE FROM users WHERE id=$1 AND role='agent'", [req.params.id]);
     res.json({ success: true });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: "Failed to delete agent" });
+    console.error(err);
+    res.status(500).json({ error: "Failed to delete agent", details: err.message });
   }
 });
+
 
 // ✅ Agent: Create Game
 app.post("/api/games", authenticate("agent"), async (req, res) => {
