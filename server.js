@@ -11,7 +11,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT;
 const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
 
 // ✅ JWT Middleware
