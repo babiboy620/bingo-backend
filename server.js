@@ -167,18 +167,29 @@ app.delete("/api/agents/:id", authenticate, async (req, res) => {
 });
 
 
-// ✅ Agent: Create Game
+// ✅ Agent: Create Game (fixed version)
 app.post("/api/games", authenticate("agent"), async (req, res) => {
   try {
     const { players, pot, entryfee, winmode } = req.body;
+
+    // ✅ Get the actual owner dynamically from database
+    const ownerResult = await pool.query("SELECT id FROM users WHERE role='owner' LIMIT 1");
+    if (ownerResult.rows.length === 0) {
+      return res.status(500).json({ error: "No owner found in database" });
+    }
+
+    const ownerId = ownerResult.rows[0].id;
+
     const result = await pool.query(
       `INSERT INTO games (agentid, ownerid, players, pot, entryfee, winmode)
-       VALUES ($1, 1, $2, $3, $4, $5) RETURNING *`,
-      [req.user.id, players, pot, entryfee, winmode]
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [req.user.id, ownerId, players, pot, entryfee, winmode]
     );
+
     res.json({ success: true, game: result.rows[0] });
   } catch (err) {
-    console.error(err.message);
+    console.error("❌ Game creation error:", err);
     res.status(500).json({ error: "Failed to create game" });
   }
 });
