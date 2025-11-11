@@ -193,16 +193,17 @@ app.post("/api/games", authenticate("agent"), async (req, res) => {
     res.status(500).json({ error: "Failed to create game" });
   }
 });
-//load cartelas 
-app.get("/api/cartelas", async (req, res) => {
+//api/games/:id/cartelas load cartelas 
+app.get("/api/games/:id/cartelas", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM cartelas WHERE isused = false LIMIT 10");
-    res.json(result.rows);
+    res.json({ cartelas: result.rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to load cartelas" });
   }
 });
+
 
 // ✅ Agent: My Game History
 app.get("/api/games/my-history", authenticate("agent"), async (req, res) => {
