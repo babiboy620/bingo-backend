@@ -193,14 +193,24 @@ app.post("/api/games", authenticate("agent"), async (req, res) => {
     res.status(500).json({ error: "Failed to create game" });
   }
 });
-//api/games/:id/cartelas load cartelas 
+// ✅ Load available cartelas for a game
 app.get("/api/games/:id/cartelas", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM cartelas WHERE isused = false LIMIT 10");
+    const gameId = req.params.id;
+
+    const result = await pool.query(
+      "SELECT * FROM cartelas WHERE (isused = false OR gameid = $1) ORDER BY id ASC LIMIT 10",
+      [gameId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "No cartelas available" });
+    }
+
     res.json({ cartelas: result.rows });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to load cartelas" });
+    console.error("❌ Error loading cartelas:", err.message);
+    res.status(500).json({ error: "Failed to load cartelas", details: err.message });
   }
 });
 
@@ -306,6 +316,23 @@ app.get("/api/cartelas", async (req, res) => {
   } catch (err) {
     console.error("Error fetching cartelas:", err.message);
     res.status(500).json({ error: "Failed to load cartelas" });
+  }
+});
+// ✅ Save called numbers for a specific game
+app.post("/api/games/:id/called", async (req, res) => {
+  try {
+    const { numbers } = req.body;
+    const gameId = req.params.id;
+
+    if (!Array.isArray(numbers)) {
+      return res.status(400).json({ error: "Numbers must be an array" });
+    }
+
+    await pool.query("UPDATE games SET called = $1 WHERE id = $2", [numbers, gameId]);
+    res.json({ success: true, message: "Numbers saved successfully" });
+  } catch (err) {
+    console.error("❌ Error saving called numbers:", err.message);
+    res.status(500).json({ error: "Failed to save called numbers", details: err.message });
   }
 });
 
