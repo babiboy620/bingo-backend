@@ -308,9 +308,6 @@ app.get("/api/cartelas", async (req, res) => {
     res.status(500).json({ error: "Failed to load cartelas" });
   }
 });
-app.post("/api/test", async (req, res) => {
-  res.json({ ok: true, message: "Server and DB alive" });
-});
 
 // ✅ Start server
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
