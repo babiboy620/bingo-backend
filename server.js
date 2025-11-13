@@ -167,50 +167,58 @@ app.delete("/api/agents/:id", authenticate, async (req, res) => {
 });
 
 
-// ✅ Agent: Create Game (fixed version)
+// ✅ Agent: Create Game (stores cartelas, profit, winnermoney)
 app.post("/api/games", authenticate("agent"), async (req, res) => {
   try {
-    const { players, pot, entryfee, winmode } = req.body;
+    const {
+      players,
+      pot,
+      entryfee,
+      // accept both casings from different frontends
+      winmode = req.body.winMode || req.body.winmode || null,
+      cartelas = req.body.cartelas || [],
+      winnermoney = req.body.winnerMoney || req.body.winnermoney || 0,
+      profit = req.body.profit || 0,
+      date = req.body.date || new Date(),
+    } = req.body || {};
 
-    // ✅ Get the actual owner dynamically from database
+    // validate required
+    if (!players || !pot || typeof entryfee === "undefined") {
+      return res.status(400).json({ error: "players, pot and entryfee required" });
+    }
+
+    // find an owner id
     const ownerResult = await pool.query("SELECT id FROM users WHERE role='owner' LIMIT 1");
     if (ownerResult.rows.length === 0) {
       return res.status(500).json({ error: "No owner found in database" });
     }
-
     const ownerId = ownerResult.rows[0].id;
 
+    // Insert including cartelas (JSONB), called (empty), winnermoney, profit, date
     const result = await pool.query(
-      `INSERT INTO games (agentid, ownerid, players, pot, entryfee, winmode)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO games
+        (agentid, ownerid, players, pot, entryfee, winmode, cartelas, called, winnermoney, profit, date)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        RETURNING *`,
-      [req.user.id, ownerId, players, pot, entryfee, winmode]
+      [
+        req.user.id,
+        ownerId,
+        players,
+        pot,
+        entryfee,
+        winmode,
+        JSON.stringify(cartelas || []), // JSONB
+        JSON.stringify([]),             // called starts empty
+        winnermoney,
+        profit,
+        date,
+      ]
     );
 
     res.json({ success: true, game: result.rows[0] });
   } catch (err) {
     console.error("❌ Game creation error:", err);
-    res.status(500).json({ error: "Failed to create game" });
-  }
-});
-// ✅ Load available cartelas for a game
-app.get("/api/games/:id/cartelas", async (req, res) => {
-  try {
-    const gameId = req.params.id;
-
-    const result = await pool.query(
-      "SELECT * FROM cartelas WHERE (isused = false OR gameid = $1) ORDER BY id ASC LIMIT 10",
-      [gameId]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "No cartelas available" });
-    }
-
-    res.json({ cartelas: result.rows });
-  } catch (err) {
-    console.error("❌ Error loading cartelas:", err.message);
-    res.status(500).json({ error: "Failed to load cartelas", details: err.message });
+    res.status(500).json({ error: "Failed to create game", details: err.message });
   }
 });
 
@@ -334,6 +342,34 @@ app.post("/api/games/:id/called", async (req, res) => {
     console.error("❌ Error saving called numbers:", err.message);
     res.status(500).json({ error: "Failed to save called numbers", details: err.message });
   }
+});
+// ✅ Get single game by id (used by caller)
+app.get("/api/games/:id", authenticate(), async (req, res) => {
+  try {
+    const gameId = req.params.id;
+    const q = await pool.query("SELECT * FROM games WHERE id = $1", [gameId]);
+    if (q.rows.length === 0) return res.status(404).json({ error: "Game not found" });
+
+    const game = q.rows[0];
+
+    // If cartelas / called stored as JSONB, they come as strings/objects depending on driver version,
+    // ensure they are proper JS arrays:
+    try {
+      if (typeof game.cartelas === "string") game.cartelas = JSON.parse(game.cartelas);
+    } catch (e) { /* ignore parse error */ }
+    try {
+      if (typeof game.called === "string") game.called = JSON.parse(game.called);
+    } catch (e) { /* ignore parse error */ }
+
+    res.json({ success: true, game });
+  } catch (err) {
+    console.error("❌ Error fetching game:", err.message);
+    res.status(500).json({ error: "Failed to fetch game", details: err.message });
+  }
+});
+app.get("/api/debug/game/:id", async (req,res)=>{
+  const g = await pool.query("SELECT * FROM games WHERE id=$1",[req.params.id]);
+  return res.json(g.rows[0] || null);
 });
 
 // ✅ Start server
