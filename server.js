@@ -339,6 +339,21 @@ app.get("/api/cartelas", async (req, res) => {
     res.status(500).json({ error: "Failed to load cartelas" });
   }
 });
+// ✅ Fetch cartelas linked to a specific game
+app.get("/api/games/:id/cartelas", authenticate(), async (req, res) => {
+  try {
+    const gameId = req.params.id;
+    const result = await pool.query(
+      "SELECT id, numbers, issued, createdat FROM cartelas WHERE gameid = $1 ORDER BY id ASC",
+      [gameId]
+    );
+    res.json({ success: true, cartelas: result.rows });
+  } catch (err) {
+    console.error("❌ Error loading cartelas:", err);
+    res.status(500).json({ error: "Failed to load cartelas" });
+  }
+});
+
 // ✅ Save called numbers for a specific game
 app.post("/api/games/:id/called", async (req, res) => {
   try {
