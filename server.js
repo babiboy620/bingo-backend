@@ -167,7 +167,7 @@ app.delete("/api/agents/:id", authenticate, async (req, res) => {
 });
 
 
-// ✅ Agent: Create Game (stores cartelas, profit, winnermoney)
+/// ✅ Agent: Create Game (stores cartelas, profit, winnermoney, and links them)
 app.post("/api/games", authenticate("agent"), async (req, res) => {
   try {
     const {
@@ -215,12 +215,25 @@ app.post("/api/games", authenticate("agent"), async (req, res) => {
       ]
     );
 
+    const gameId = result.rows[0].id;
+
+    // ✅ NEW: link selected cartelas to this game and mark them as used
+    if (cartelas && cartelas.length > 0) {
+      await pool.query(
+        `UPDATE cartelas 
+         SET issued = true, gameid = $1 
+         WHERE id = ANY($2)`,
+        [gameId, cartelas]
+      );
+    }
+
     res.json({ success: true, game: result.rows[0] });
   } catch (err) {
     console.error("❌ Game creation error:", err);
     res.status(500).json({ error: "Failed to create game", details: err.message });
   }
 });
+
 
 
 // ✅ Agent: My Game History
