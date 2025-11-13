@@ -367,10 +367,6 @@ app.get("/api/games/:id", authenticate(), async (req, res) => {
     res.status(500).json({ error: "Failed to fetch game", details: err.message });
   }
 });
-app.get("/api/debug/game/:id", async (req,res)=>{
-  const g = await pool.query("SELECT * FROM games WHERE id=$1",[req.params.id]);
-  return res.json(g.rows[0] || null);
-});
 
 // ✅ Start server
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
