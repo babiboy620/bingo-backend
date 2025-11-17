@@ -8,7 +8,13 @@ const { pool } = require("./db");
 const PDFDocument = require("pdfkit");
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: "https://bingofront.vercel.app",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+app.options("*", cors());
+
 app.use(express.json());
 
 const PORT = process.env.PORT;
