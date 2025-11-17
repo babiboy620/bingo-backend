@@ -328,16 +328,7 @@ app.get("/api/reports/owner", authenticate("owner"), async (req, res) => {
 app.get("/", (req, res) => {
   res.send("🎯 Bingo Backend (PostgreSQL + Render) running successfully!");
 });
-// ✅ Fetch all cartelas (used in caller dashboard)
-app.get("/api/cartelas", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM cartelas ORDER BY id ASC");
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Error fetching cartelas:", err.message);
-    res.status(500).json({ error: "Failed to load cartelas" });
-  }
-});
+
 // ✅ Fetch cartelas linked to a specific game
 app.get("/api/games/:id/cartelas", authenticate(), async (req, res) => {
   try {
