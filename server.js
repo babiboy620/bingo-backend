@@ -217,24 +217,22 @@ app.post("/api/games", authenticate("agent"), async (req, res) => {
 
     const gameId = result.rows[0].id;
 
-  // ✅ Load cartelas for a specific game
-app.get("/api/games/:id/cartelas", async (req, res) => {
-  try {
-    const gameId = req.params.id;
+ // ✅ NEW: link selected cartelas to this game and mark them as used
+    if (cartelas && cartelas.length > 0) {
+      await pool.query(
+        `UPDATE cartelas 
+         SET issued = true, gameid = $1 
+         WHERE id = ANY($2)`,
+        [gameId, cartelas]
+      );
+    }
 
-    const q = await pool.query(
-      "SELECT * FROM cartelas WHERE gameid = $1 ORDER BY id ASC",
-      [gameId]
-    );
-
-    res.json({ success: true, cartelas: q.rows });
-
+    res.json({ success: true, game: result.rows[0] });
   } catch (err) {
-    console.error("Cartela fetch error:", err);
-    res.status(500).json({ success: false, error: "Failed to load cartelas" });
+    console.error("❌ Game creation error:", err);
+    res.status(500).json({ error: "Failed to create game", details: err.message });
   }
 });
-
 
 
 // ✅ Agent: My Game History
