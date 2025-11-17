@@ -336,20 +336,56 @@ app.get("/", (req, res) => {
 });
 
 // ✅ Fetch cartelas linked to a specific game
-app.get("/api/games/:id/cartelas", authenticate(), async (req, res) => {
-  try {
-    const gameId = req.params.id;
-    const result = await pool.query(
-      "SELECT id, numbers, issued, createdat FROM cartelas WHERE gameid = $1 ORDER BY id ASC",
-      [gameId]
-    );
-    res.json({ success: true, cartelas: result.rows });
-  } catch (err) {
-    console.error("❌ Error loading cartelas:", err);
-    res.status(500).json({ error: "Failed to load cartelas" });
-  }
-});
+// In server.js, modify the /api/games/:id/cartelas endpoint:
 
+app.get("/api/games/:id/cartelas", authenticate(), async (req, res) => {
+  try {
+    const gameId = req.params.id;
+    // 1. Try to load from the 'cartelas' table (the correct source)
+    let result = await pool.query(
+      "SELECT id, numbers, issued, createdat FROM cartelas WHERE gameid = $1 ORDER BY id ASC",
+      [gameId]
+    );
+
+    let cartelasList = result.rows;
+
+    // 2. Fallback: If the count is less than expected, fetch the list of IDs from the 'games' table
+    // (This assumes the cartelas column in 'games' holds the full list of IDs selected)
+    if (cartelasList.length < 13) { // or some other check for an incomplete list
+      const gameQ = await pool.query("SELECT cartelas FROM games WHERE id = $1", [gameId]);
+      if (gameQ.rows.length > 0) {
+        let storedCartelaIds = gameQ.rows[0].cartelas; // This is a JSONB array of IDs
+
+        if (typeof storedCartelaIds === "string") {
+          storedCartelaIds = JSON.parse(storedCartelaIds);
+        }
+        
+        if (Array.isArray(storedCartelaIds)) {
+            // Filter out IDs that were successfully loaded from the 'cartelas' table
+            const loadedIds = new Set(cartelasList.map(c => String(c.id)));
+            const missingIds = storedCartelaIds.filter(id => !loadedIds.has(String(id)));
+
+            // Add the missing IDs to the list using just the ID (frontend will use makeGridFromId)
+            const fallbackCartelas = missingIds.map(id => ({ 
+                id: String(id), 
+                numbers: null, 
+                issued: true, 
+                createdat: null // Placeholder
+            }));
+            cartelasList = [...cartelasList, ...fallbackCartelas];
+        }
+      }
+    }
+    
+    // Sort the final list by ID before sending
+    cartelasList.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+
+    res.json({ success: true, cartelas: cartelasList });
+  } catch (err) {
+    console.error("❌ Error loading cartelas:", err);
+    res.status(500).json({ error: "Failed to load cartelas" });
+  }
+});
 // ✅ Save called numbers for a specific game
 app.post("/api/games/:id/called", async (req, res) => {
   try {
