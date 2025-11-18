@@ -161,28 +161,31 @@ app.post("/api/agents/create", authenticate, async (req, res) => {
   }
 });
 
-// ✅ Owner: Get all Agents (TESTING DB WITH SIMPLE QUERY)
+// ✅ Owner: Get all Agents (Final DB Crash Debug)
 app.get("/api/agents", authenticate, async (req, res) => {
   try {
-    // Log successful authentication
-    console.log(`[AGENT DEBUG] Auth passed. Testing simple DB query...`);
-
-    // Use a simple, non-role-specific query just to test pool responsiveness
-    const result = await pool.query("SELECT id FROM users LIMIT 1"); 
-
-    console.log(`[AGENT DEBUG] DB query successful. Users found: ${result.rows.length}`);
+    // 📢 Log 1: Confirm the code is running after authentication
+    console.log(`[DB CRASH DEBUG] 1. Auth passed for user ID: ${req.user.id}.`); 
     
-    // Now perform the actual logic
+    // Check role before query (good practice)
     if (req.user.role !== "owner")
       return res.status(403).json({ error: "Only owner can view agents" });
 
-    const fullResult = await pool.query(
+    // 📢 Log 2: Log just before the crashing line
+    console.log(`[DB CRASH DEBUG] 2. About to execute pool.query...`); 
+    
+    // The query that might be crashing the process
+    const result = await pool.query(
       "SELECT id, phone, name, role, isactive FROM users WHERE role='agent' ORDER BY id ASC"
     );
-    res.json(fullResult.rows);
+    
+    // 📢 Log 3: Log after a successful query
+    console.log(`[DB CRASH DEBUG] 3. Query succeeded! Returning ${result.rows.length} agents.`);
+
+    res.json(result.rows);
   } catch (err) {
-    // 💥 THIS CATCH IS CRUCIAL
-    console.error("❌ CRASH POINT IDENTIFIED: Failed to fetch agents:", err.message);
+    // 💥 This will catch database errors and prevent the server from crashing
+    console.error("❌ FINAL CRASH LOG (Route Handler):", err.message);
     res.status(500).json({ error: "Failed to fetch agents", details: err.message });
   }
 });
@@ -477,6 +480,21 @@ app.get("/api/games/:id", authenticate(), async (req, res) => {
     res.status(500).json({ error: "Failed to fetch game", details: err.message });
   }
 });
+// =========================================================
+// 🛑 GLOBAL CRASH HANDLERS (Add this block)
+// =========================================================
 
+process.on("unhandledRejection", (reason, promise) => {
+    console.error("❌ UNHANDLED REJECTION (Likely DB failure):", reason);
+    // Note: Do not exit the process here if possible, let the server try to recover
+});
+
+process.on("uncaughtException", (err) => {
+    console.error("❌ UNCAUGHT EXCEPTION (Process Killer):", err);
+    // In a production environment, you might gracefully exit here (process.exit(1)), 
+    // but for debugging, we log it aggressively.
+});
+
+// =========================================================
 // ✅ Start server
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
