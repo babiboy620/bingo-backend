@@ -30,38 +30,44 @@ const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
 console.log(`[DEBUG] JWT_SECRET loaded: ${!!process.env.JWT_SECRET}`); // Check if it's set
 // ------------------
 
-// ✅ JWT Middleware (Enhanced Debug)
+// ✅ JWT Middleware (Deep Debug)
 function authenticate(role = null) {
     return (req, res, next) => {
-        console.log(`[AUTH DEBUG] Starting auth for ${req.url}`); // Step A
+        // --- ADD THESE LOGS ---
+        if (!JWT_SECRET) {
+             console.error("[CRASH DEBUG] JWT_SECRET is NOT set! Cannot authenticate.");
+             return res.status(500).json({ error: "Server Configuration Error: JWT Secret Missing" });
+        }
+        console.log(`[AUTH DEBUG] Starting auth for ${req.url}`);
+        // ----------------------
+        
         const authHeader = req.headers.authorization;
         
         if (!authHeader) {
-            console.log(`[AUTH DEBUG] Missing token, sending 401.`); // Step B
+            console.log(`[AUTH DEBUG] Missing token, sending 401.`);
             return res.status(401).json({ error: "Missing token" });
         }
 
         const token = authHeader.split(" ")[1];
         try {
-            console.log(`[AUTH DEBUG] Attempting JWT verify...`); // Step C
+            console.log(`[AUTH DEBUG] Attempting JWT verify...`);
             const user = jwt.verify(token, JWT_SECRET);
-            console.log(`[AUTH DEBUG] Token verified for role: ${user.role}`); // Step D
+            console.log(`[AUTH DEBUG] Token verified for role: ${user.role}`);
 
             if (role && user.role !== role) {
-                console.log(`[AUTH DEBUG] Role denied: ${user.role}`); // Step E
+                console.log(`[AUTH DEBUG] Role denied: ${user.role}`);
                 return res.status(403).json({ error: `Only ${role}s allowed` });
             }
             
             req.user = user;
-            console.log(`[AUTH DEBUG] Auth successful, calling next().`); // Step F
+            console.log(`[AUTH DEBUG] Auth successful, calling next().`);
             next();
         } catch (error) {
-            console.error(`[AUTH DEBUG] JWT Verification FAILED:`, error.message); // Step G
+            console.error(`[AUTH DEBUG] JWT Verification FAILED:`, error.message);
             res.status(403).json({ error: "Invalid token" });
         }
     };
 }
-
 // ✅ Create the first owner
 app.post("/api/create-first-owner", async (req, res) => {
   try {
