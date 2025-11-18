@@ -26,23 +26,40 @@ app.use(express.json());
 const PORT = process.env.PORT;
 const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
 
-// ✅ JWT Middleware
-function authenticate(role = null) {
-  return (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: "Missing token" });
+// 📢 ADD THE JWT DEBUG LOG HERE
+console.log(`[DEBUG] JWT_SECRET loaded: ${!!process.env.JWT_SECRET}`); // Check if it's set
+// ------------------
 
-    const token = authHeader.split(" ")[1];
-    try {
-      const user = jwt.verify(token, JWT_SECRET);
-      if (role && user.role !== role)
-        return res.status(403).json({ error: `Only ${role}s allowed` });
-      req.user = user;
-      next();
-    } catch {
-      res.status(403).json({ error: "Invalid token" });
-    }
-  };
+// ✅ JWT Middleware (Enhanced Debug)
+function authenticate(role = null) {
+    return (req, res, next) => {
+        console.log(`[AUTH DEBUG] Starting auth for ${req.url}`); // Step A
+        const authHeader = req.headers.authorization;
+        
+        if (!authHeader) {
+            console.log(`[AUTH DEBUG] Missing token, sending 401.`); // Step B
+            return res.status(401).json({ error: "Missing token" });
+        }
+
+        const token = authHeader.split(" ")[1];
+        try {
+            console.log(`[AUTH DEBUG] Attempting JWT verify...`); // Step C
+            const user = jwt.verify(token, JWT_SECRET);
+            console.log(`[AUTH DEBUG] Token verified for role: ${user.role}`); // Step D
+
+            if (role && user.role !== role) {
+                console.log(`[AUTH DEBUG] Role denied: ${user.role}`); // Step E
+                return res.status(403).json({ error: `Only ${role}s allowed` });
+            }
+            
+            req.user = user;
+            console.log(`[AUTH DEBUG] Auth successful, calling next().`); // Step F
+            next();
+        } catch (error) {
+            console.error(`[AUTH DEBUG] JWT Verification FAILED:`, error.message); // Step G
+            res.status(403).json({ error: "Invalid token" });
+        }
+    };
 }
 
 // ✅ Create the first owner
