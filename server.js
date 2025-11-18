@@ -150,31 +150,30 @@ app.post("/api/agents/create", authenticate, async (req, res) => {
   }
 });
 
-// ✅ Owner: Get all Agents (TEMPORARILY MODIFIED FOR DEBUG)
-app.get("/api/agents", async (req, res) => { // Removed authenticate middleware
+// ✅ Owner: Get all Agents (RE-ENABLING AUTHENTICATION)
+app.get("/api/agents", authenticate, async (req, res) => {
   try {
-    // Temporary log to confirm it reached the endpoint
-    console.log("[AGENT DEBUG] Successfully reached /api/agents endpoint. Bypassing DB.");
-
-    // MOCK DATA RESPONSE - If this returns, the issue is authentication or DB.
-    res.json([
-      { id: 999, phone: '555111222', name: 'MOCK AGENT', role: 'agent', isactive: true }
-    ]);
-  
-    /* ORIGINAL LOGIC (commented out)
-    if (req.user.role !== "owner")
+    // 📢 STEP 1: Auth check is now handled by the middleware.
+    
+    // We expect req.user to be set here by the successful authentication
+    console.log(`[AGENT DEBUG] Reached endpoint as: ${req.user.role}, ID: ${req.user.id}`);
+    
+    // 📢 STEP 2: The Original Role Check (must be here since authenticate middleware doesn't enforce 'owner' role)
+    if (req.user.role !== "owner")
       return res.status(403).json({ error: "Only owner can view agents" });
 
-    const result = await pool.query(
-      "SELECT id, phone, name, role, isactive FROM users WHERE role='agent' ORDER BY id ASC"
-    );
-    res.json(result.rows);
-    */
+    // 📢 STEP 3: MOCK DATA RESPONSE - If this returns, the entire auth flow is fixed.
+    return res.json([
+      { id: 999, phone: '555111222', name: 'MOCK AGENT', role: 'agent', isactive: true }
+    ]);
+
   } catch (err) {
-    console.error(err);
+    // ... error handling
+    console.error("[AGENT DEBUG] Endpoint FAILED:", err);
     res.status(500).json({ error: "Failed to fetch agents", details: err.message });
   }
 });
+
 // ✅ Owner: Toggle (block/unblock) Agent
 app.post("/api/agents/:id/toggle", authenticate, async (req, res) => {
   try {
