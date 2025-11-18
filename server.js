@@ -30,40 +30,51 @@ const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
 console.log(`[DEBUG] JWT_SECRET loaded: ${!!process.env.JWT_SECRET}`); // Check if it's set
 // ------------------
 
-// ✅ JWT Middleware (Deep Debug)
+// ✅ JWT Middleware (ULTRA-DEFENSIVE VERSION)
 function authenticate(role = null) {
+    // This runs once when the server starts, not per request.
+    // Ensure JWT_SECRET is available globally (which it is, from the top of server.js)
+    
     return (req, res, next) => {
-        // --- ADD THESE LOGS ---
-        if (!JWT_SECRET) {
-             console.error("[CRASH DEBUG] JWT_SECRET is NOT set! Cannot authenticate.");
-             return res.status(500).json({ error: "Server Configuration Error: JWT Secret Missing" });
+        // 📢 Check 1: Did we reach the function?
+        console.log(`[AUTH DEBUG] 1. Request reached authenticate for ${req.url}`); 
+        
+        // Ensure role checks are valid, even if token is missing
+        if (role && !req.headers.authorization) {
+            console.log(`[AUTH DEBUG] 2. Role needed but no token. Sending 401.`);
+            return res.status(401).json({ error: "Missing token" });
         }
-        console.log(`[AUTH DEBUG] Starting auth for ${req.url}`);
-        // ----------------------
-        
+
         const authHeader = req.headers.authorization;
-        
         if (!authHeader) {
-            console.log(`[AUTH DEBUG] Missing token, sending 401.`);
+            console.log(`[AUTH DEBUG] 3. Token missing, sending 401.`);
             return res.status(401).json({ error: "Missing token" });
         }
 
         const token = authHeader.split(" ")[1];
-        try {
-            console.log(`[AUTH DEBUG] Attempting JWT verify...`);
-            const user = jwt.verify(token, JWT_SECRET);
-            console.log(`[AUTH DEBUG] Token verified for role: ${user.role}`);
+        
+        // Use a simple log to ensure JWT_SECRET is not causing a runtime crash
+        console.log(`[AUTH DEBUG] 4. Token received. JWT_SECRET length: ${JWT_SECRET.length}`);
 
+        try {
+            const user = jwt.verify(token, JWT_SECRET);
+            
+            // This is the core reason you need authentication—to check the user's role and data.
             if (role && user.role !== role) {
-                console.log(`[AUTH DEBUG] Role denied: ${user.role}`);
+                console.log(`[AUTH DEBUG] 5. Role denied: ${user.role}. Sending 403.`);
                 return res.status(403).json({ error: `Only ${role}s allowed` });
             }
             
             req.user = user;
-            console.log(`[AUTH DEBUG] Auth successful, calling next().`);
+            console.log(`[AUTH DEBUG] 6. Auth successful, proceeding.`);
             next();
+            
         } catch (error) {
-            console.error(`[AUTH DEBUG] JWT Verification FAILED:`, error.message);
+            console.error(`[AUTH DEBUG] 7. JWT Verification FAILED: ${error.message}`);
+            // Check if the error is due to an invalid secret length/type
+            if (error.message.includes('secret')) {
+                 console.error('[AUTH DEBUG] Likely JWT Secret mismatch or malformation!');
+            }
             res.status(403).json({ error: "Invalid token" });
         }
     };
