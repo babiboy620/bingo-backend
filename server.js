@@ -5,6 +5,19 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { pool } = require("./db");
+// =========================================================
+// 📢 FORCE DB WAKE-UP AND TEST (PASTE HERE)
+// =========================================================
+(async () => {
+    try {
+        const res = await pool.query('SELECT 1 + 1 AS solution');
+        console.log(`✅ DB Wake-up successful. Test query result: ${res.rows[0].solution}`);
+    } catch (err) {
+        console.error("❌ CRITICAL: Initial DB WAKE-UP FAILED! Check DATABASE_URL/DB status.", err.message);
+        // Do NOT exit, let the server start and crash on the route
+    }
+})();
+// =========================================================
 const PDFDocument = require("pdfkit");
 
 const app = express();
