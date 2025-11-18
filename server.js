@@ -150,22 +150,31 @@ app.post("/api/agents/create", authenticate, async (req, res) => {
   }
 });
 
-// ✅ Owner: Get all Agents
-app.get("/api/agents", authenticate, async (req, res) => {
-  try {
-    if (req.user.role !== "owner")
-      return res.status(403).json({ error: "Only owner can view agents" });
+// ✅ Owner: Get all Agents (TEMPORARILY MODIFIED FOR DEBUG)
+app.get("/api/agents", async (req, res) => { // Removed authenticate middleware
+  try {
+    // Temporary log to confirm it reached the endpoint
+    console.log("[AGENT DEBUG] Successfully reached /api/agents endpoint. Bypassing DB.");
 
-    const result = await pool.query(
-      "SELECT id, phone, name, role, isactive FROM users WHERE role='agent' ORDER BY id ASC"
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch agents", details: err.message });
-  }
+    // MOCK DATA RESPONSE - If this returns, the issue is authentication or DB.
+    res.json([
+      { id: 999, phone: '555111222', name: 'MOCK AGENT', role: 'agent', isactive: true }
+    ]);
+  
+    /* ORIGINAL LOGIC (commented out)
+    if (req.user.role !== "owner")
+      return res.status(403).json({ error: "Only owner can view agents" });
+
+    const result = await pool.query(
+      "SELECT id, phone, name, role, isactive FROM users WHERE role='agent' ORDER BY id ASC"
+    );
+    res.json(result.rows);
+    */
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch agents", details: err.message });
+  }
 });
-
 // ✅ Owner: Toggle (block/unblock) Agent
 app.post("/api/agents/:id/toggle", authenticate, async (req, res) => {
   try {
