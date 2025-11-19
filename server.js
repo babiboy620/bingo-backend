@@ -246,35 +246,57 @@ app.delete("/api/agents/:id", authenticate, async (req, res) => {
   }
 });
 
-
-/// ✅ Agent: Create Game (stores cartelas, profit, winnermoney, and links them)
+/// ✅ Agent: Create Game
 app.post("/api/games", authenticate("agent"), async (req, res) => {
   try {
     const {
       players,
       pot,
       entryfee,
-      // accept both casings from different frontends
-      winmode = req.body.winMode || req.body.winmode || null,
-      cartelas = req.body.cartelas || [],
-      winnermoney = req.body.winnerMoney || req.body.winnermoney || 0,
-      profit = req.body.profit || 0,
-      date = req.body.date || new Date(),
+      winMode,
+      winmode,
+      cartelas = [],
+      winnerMoney,
+      winnermoney,
+      profit = 0,
+      date: incomingDate
     } = req.body || {};
 
-    // validate required
+    // -------------------------------
+    // ✅ Fix date format (DD/MM/YYYY → YYYY-MM-DD)
+    // -------------------------------
+    let date = incomingDate || new Date();
+
+    if (typeof date === "string" && date.includes("/")) {
+      const [day, month, year] = date.split("/");
+      date = `${year}-${month}-${day}`;
+    }
+
+    // -------------------------------
+    // Normalize values
+    // -------------------------------
+    const finalWinMode = winMode || winmode || null;
+    const finalWinnerMoney = winnerMoney || winnermoney || 0;
+
+    // -------------------------------
+    // Validate required fields
+    // -------------------------------
     if (!players || !pot || typeof entryfee === "undefined") {
       return res.status(400).json({ error: "players, pot and entryfee required" });
     }
 
-    // find an owner id
+    // -------------------------------
+    // Find owner
+    // -------------------------------
     const ownerResult = await pool.query("SELECT id FROM users WHERE role='owner' LIMIT 1");
     if (ownerResult.rows.length === 0) {
       return res.status(500).json({ error: "No owner found in database" });
     }
     const ownerId = ownerResult.rows[0].id;
 
-    // Insert including cartelas (JSONB), called (empty), winnermoney, profit, date
+    // -------------------------------
+    // Create game
+    // -------------------------------
     const result = await pool.query(
       `INSERT INTO games
         (agentid, ownerid, players, pot, entryfee, winmode, cartelas, called, winnermoney, profit, date)
@@ -286,18 +308,20 @@ app.post("/api/games", authenticate("agent"), async (req, res) => {
         players,
         pot,
         entryfee,
-        winmode,
-        JSON.stringify(cartelas || []), // JSONB
-        JSON.stringify([]),             // called starts empty
-        winnermoney,
+        finalWinMode,
+        JSON.stringify(cartelas),
+        JSON.stringify([]),
+        finalWinnerMoney,
         profit,
-        date,
+        date
       ]
     );
 
     const gameId = result.rows[0].id;
 
- // ✅ NEW: link selected cartelas to this game and mark them as used
+    // -------------------------------
+    // Link selected cartelas
+    // -------------------------------
     if (cartelas && cartelas.length > 0) {
       await pool.query(
         `UPDATE cartelas 
@@ -307,7 +331,8 @@ app.post("/api/games", authenticate("agent"), async (req, res) => {
       );
     }
 
-    res.json({ success: true, game: result.rows[0] });
+    return res.json({ success: true, game: result.rows[0] });
+
   } catch (err) {
     console.error("❌ Game creation error:", err);
     res.status(500).json({ error: "Failed to create game", details: err.message });
