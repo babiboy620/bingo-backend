@@ -549,6 +549,22 @@ process.on("uncaughtException", (err) => {
     // but for debugging, we log it aggressively.
 });
 
+// ✅ TEMP HASH GENERATOR ROUTE (REMOVE AFTER USE)
+app.get("/api/generate-hash/:password", async (req, res) => {
+    try {
+        const password = req.params.password;
+        if (!password) {
+            return res.status(400).send("Please provide a password in the URL.");
+        }
+        const salt = await bcrypt.genSalt(10);
+        const hash = await bcrypt.hash(password, salt);
+        console.log(`\n\n📢 NEW HASH GENERATED FOR: ${password}`);
+        console.log(`📢 USE THIS HASH: ${hash}\n\n`);
+        res.send({ password: password, hash: hash });
+    } catch (err) {
+        res.status(500).send("Failed to generate hash.");
+    }
+});
 // =========================================================
 // ✅ Start server
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
