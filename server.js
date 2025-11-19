@@ -26,15 +26,18 @@ app.use((req, res, next) => {
     console.log(`[REQUEST START] Method: ${req.method}, URL: ${req.url}`);
     next();
 });
-//
-app.use(cors({
-  origin: "https://bingofront.vercel.app",
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
-app.options("*", cors());
+// =========================================================
+// 🔥 FIXED GLOBAL CORS (RENDER + VERCEL SAFE VERSION)
+// =========================================================
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "https://bingofront.vercel.app");
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+  if (req.method === "OPTIONS") return res.sendStatus(200);
+  next();
+});
 
-app.use(express.json());
 
 const PORT = process.env.PORT;
 const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
