@@ -126,30 +126,41 @@ app.post("/api/create-first-owner", async (req, res) => {
   }
 });
 
-// ✅ Login
+// ✅ Login (WITH DEBUG LOGS)
 app.post("/api/login", async (req, res) => {
-  try {
-    const { phone, password } = req.body;
-    const result = await pool.query("SELECT * FROM users WHERE phone=$1", [phone]);
-    const user = result.rows[0];
+  try {
+    const { phone, password } = req.body;
+    const result = await pool.query("SELECT * FROM users WHERE phone=$1", [phone]);
+    const user = result.rows[0];
 
-    if (!user) return res.status(400).json({ error: "User not found" });
-    if (!user.isactive) return res.status(403).json({ error: "Account is blocked" });
+    if (!user) return res.status(400).json({ error: "User not found" });
+    if (!user.isactive) return res.status(403).json({ error: "Account is blocked" });
 
-    const valid = await bcrypt.compare(password, user.passwordhash);
-    if (!valid) return res.status(401).json({ error: "Invalid password" });
+    // 📢 START DEBUG BLOCK (Place the logs here)
+    console.log(`[LOGIN DEBUG] Input password: ${password}`);
+    console.log(`[LOGIN DEBUG] Hash from DB: ${user.passwordhash}`);
+    console.log(`[LOGIN DEBUG] Hash length: ${user.passwordhash.length}`);
+    console.log(`[LOGIN DEBUG] Hash starts with: ${user.passwordhash.substring(0, 5)}`);
+    // 📢 END DEBUG BLOCK
+    
+    const valid = await bcrypt.compare(password, user.passwordhash); // The failing line
+    
+    if (!valid) {
+        console.error("[LOGIN DEBUG] Bcrypt comparison failed! Sending 401.");
+        return res.status(401).json({ error: "Invalid password" });
+    }
+    
+    const token = jwt.sign(
+      { id: user.id, phone: user.phone, role: user.role, name: user.name },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
-    const token = jwt.sign(
-      { id: user.id, phone: user.phone, role: user.role, name: user.name },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-
-    res.json({ success: true, token, user });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: "Login failed" });
-  }
+    res.json({ success: true, token, user });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Login failed" });
+  }
 });
 
 // ✅ Owner: Create Agent
