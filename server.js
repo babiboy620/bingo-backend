@@ -126,7 +126,7 @@ app.post("/api/create-first-owner", async (req, res) => {
   }
 });
 
-// ✅ Login (WITH HASH CLEANING FIX)
+// ✅ Login (Final Working Version)
 app.post("/api/login", async (req, res) => {
   try {
     const { phone, password } = req.body;
@@ -136,8 +136,7 @@ app.post("/api/login", async (req, res) => {
     if (!user) return res.status(400).json({ error: "User not found" });
     if (!user.isactive) return res.status(403).json({ error: "Account is blocked" });
 
-    // 🛠️ CRITICAL FIX: Clean up the hash string from the database
-    // This removes leading/trailing spaces and null characters that the pg library sometimes adds.
+    // Using the cleanHash logic, which we know works better
     const cleanHash = String(user.passwordhash).trim();
     
     const valid = await bcrypt.compare(password, cleanHash);
