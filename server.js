@@ -27,6 +27,11 @@ app.use((req, res, next) => {
     next();
 });
 // =========================================================
+
+app.use(express.json());      // ← MUST come first
+app.use(express.urlencoded({ extended: true }));
+
+// =========================================================
 // 🔥 FIXED GLOBAL CORS (RENDER + VERCEL SAFE VERSION)
 // =========================================================
 app.use((req, res, next) => {
