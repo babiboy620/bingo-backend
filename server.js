@@ -126,7 +126,7 @@ app.post("/api/create-first-owner", async (req, res) => {
   }
 });
 
-// ✅ Login (WITH DEBUG LOGS)
+// ✅ Login (WITH HASH CLEANING FIX)
 app.post("/api/login", async (req, res) => {
   try {
     const { phone, password } = req.body;
@@ -136,17 +136,14 @@ app.post("/api/login", async (req, res) => {
     if (!user) return res.status(400).json({ error: "User not found" });
     if (!user.isactive) return res.status(403).json({ error: "Account is blocked" });
 
-    // 📢 START DEBUG BLOCK (Place the logs here)
-    console.log(`[LOGIN DEBUG] Input password: ${password}`);
-    console.log(`[LOGIN DEBUG] Hash from DB: ${user.passwordhash}`);
-    console.log(`[LOGIN DEBUG] Hash length: ${user.passwordhash.length}`);
-    console.log(`[LOGIN DEBUG] Hash starts with: ${user.passwordhash.substring(0, 5)}`);
-    // 📢 END DEBUG BLOCK
+    // 🛠️ CRITICAL FIX: Clean up the hash string from the database
+    // This removes leading/trailing spaces and null characters that the pg library sometimes adds.
+    const cleanHash = String(user.passwordhash).trim();
     
-    const valid = await bcrypt.compare(password, user.passwordhash); // The failing line
+    const valid = await bcrypt.compare(password, cleanHash);
     
     if (!valid) {
-        console.error("[LOGIN DEBUG] Bcrypt comparison failed! Sending 401.");
+        console.error("❌ LOGIN FAILURE: Bcrypt comparison failed after cleaning hash.");
         return res.status(401).json({ error: "Invalid password" });
     }
     
@@ -158,7 +155,7 @@ app.post("/api/login", async (req, res) => {
 
     res.json({ success: true, token, user });
   } catch (err) {
-    console.error(err.message);
+    console.error("❌ Login failed:", err.message);
     res.status(500).json({ error: "Login failed" });
   }
 });
