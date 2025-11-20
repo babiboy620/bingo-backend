@@ -324,11 +324,17 @@ app.post("/api/games", authenticate("agent"), async (req, res) => {
     // ... all the variable assignments and validation logic ...
 
     // -------------------------------
-    // Create game (ULTRA-CLEAN SQL)
+  // ... inside app.post("/api/games", authenticate("agent"), async (req, res) => {
+    // ... all the variable assignments and validation logic ...
+
     // -------------------------------
-    // Placing the entire query on one line with no unnecessary breaks guarantees no hidden characters.
+    // Create game (FORCED CLEAN SQL STRING)
+    // -------------------------------
+    // Using a standard string literal and minimal spacing to eliminate hidden chars.
+    const sqlQuery = "INSERT INTO games (agentid, ownerid, players, pot, entryfee, winmode, cartelas, called, winnermoney, profit, date) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *";
+    
     const result = await pool.query(
-        `INSERT INTO games (agentid, ownerid, players, pot, entryfee, winmode, cartelas, called, winnermoney, profit, date) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+        sqlQuery,
         [
             req.user.id,
             ownerId,
@@ -345,7 +351,7 @@ app.post("/api/games", authenticate("agent"), async (req, res) => {
     );
 
     const gameId = result.rows[0].id; // Keep this line!
-
+    
     // ... the rest of the route continues ...
     // -------------------------------
     // Link selected cartelas
