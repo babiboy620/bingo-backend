@@ -255,139 +255,120 @@ app.delete("/api/agents/:id", authenticate, async (req, res) => {
 
 /// ✅ Agent: Create Game (Final Fix for Date Error)
 app.post("/api/games", authenticate("agent"), async (req, res) => {
-  try {
-    const {
-      players,
-      pot,
-      entryfee,
-      winMode,
-      winmode,
-      cartelas = [],
-      winnerMoney,
-      winnermoney,
-      profit = 0,
-      date: incomingDate
-    } = req.body || {};
+  try {
+    const {
+      players,
+      pot,
+      entryfee,
+      winMode,
+      winmode,
+      cartelas = [],
+      winnerMoney,
+      winnermoney,
+      profit = 0,
+      date: incomingDate
+    } = req.body || {};
 
-    // -------------------------------
-    // ✅ Fix date format and ensure it's a Date Object
-    // -------------------------------
-    let dateValue = incomingDate;
+    // -------------------------------
+    // ✅ Fix date format
+    // -------------------------------
+    let dateValue = incomingDate;
 
-    // 1. If date is a string in DD/MM/YYYY format, convert it to YYYY-MM-DD string
-    if (typeof dateValue === "string" && dateValue.includes("/")) {
-      const [day, month, year] = dateValue.split("/");
-      dateValue = `${year}-${month}-${day}`;
-    }
-    
-    // 2. Convert the result (either a clean YYYY-MM-DD string or an ISO string) 
-    //    into a JavaScript Date object, or default to new Date()
-    let gameDate;
-    if (dateValue) {
-        // Attempt to parse the cleaned string or ISO string
-        gameDate = new Date(dateValue); 
-    } else {
-        // Use current date if no incoming date was provided
-        gameDate = new Date();
+    if (typeof dateValue === "string" && dateValue.includes("/")) {
+      const [day, month, year] = dateValue.split("/");
+      dateValue = `${year}-${month}-${day}`;
     }
-    
-    // 3. Final safety check: if parsing failed (e.g., dateValue was a bad string), use a clean new Date()
+
+    let gameDate = dateValue ? new Date(dateValue) : new Date();
+
     if (isNaN(gameDate.getTime())) {
-        console.warn("Date parsing resulted in invalid date; using current timestamp.");
-        gameDate = new Date();
+      console.warn("Invalid date received — defaulting to now.");
+      gameDate = new Date();
     }
 
-    // -------------------------------
-    // Normalize values
-    // -------------------------------
-    const finalWinMode = winMode || winmode || null;
-    const finalWinnerMoney = winnerMoney || winnermoney || 0;
-
-    // -------------------------------
-    // Validate required fields
-    // -------------------------------
-    if (!players || !pot || typeof entryfee === "undefined") {
-      return res.status(400).json({ error: "players, pot and entryfee required" });
-    }
-
-    // -------------------------------
-    // Find owner
-    // -------------------------------
-    const ownerResult = await pool.query("SELECT id FROM users WHERE role='owner' LIMIT 1");
-    if (ownerResult.rows.length === 0) {
-      return res.status(500).json({ error: "No owner found in database" });
-    }
-    const ownerId = ownerResult.rows[0].id;
-
-  // -------------------------------
-   // ... inside app.post("/api/games", authenticate("agent"), async (req, res) => {
-    // ... all the variable assignments and validation logic ...
+    // -------------------------------
+    // Normalize values
+    // -------------------------------
+    const finalWinMode = winMode || winmode || null;
+    const finalWinnerMoney = winnerMoney || winnermoney || 0;
 
     // -------------------------------
-  // ... inside app.post("/api/games", authenticate("agent"), async (req, res) => {
-    // ... all the variable assignments and validation logic ...
+    // Validate required fields
+    // -------------------------------
+    if (!players || !pot || typeof entryfee === "undefined") {
+      return res.status(400).json({ error: "players, pot and entryfee required" });
+    }
 
     // -------------------------------
-   // -------------------------------
-    // Create game (FORCED STERILE SQL STRING)
+    // Find owner
     // -------------------------------
- // server.js, inside /api/games route
-const sqlQuery = `
-  INSERT INTO games (
-    agentid,
-    ownerid,
-    players,
-    pot,
-    entryfee,
-    winmode,
-    cartelas,
-    called,
-    winnermoney,
-    profit,
-    date
-  )
-  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-  RETURNING *;
-`;
-
-const result = await pool.query(
-    sqlQuery,
-        [
-            req.user.id,
-            ownerId,
-            players,
-            pot,
-            entryfee,
-            finalWinMode,
-            JSON.stringify(cartelas),
-            JSON.stringify([]),
-            finalWinnerMoney,
-            profit,
-            gameDate 
-        ]
+    const ownerResult = await pool.query(
+      "SELECT id FROM users WHERE role='owner' LIMIT 1"
     );
-    
+
+    if (ownerResult.rows.length === 0) {
+      return res.status(500).json({ error: "No owner found in database" });
+    }
+
+    const ownerId = ownerResult.rows[0].id;
+
+    // -------------------------------
+    // Create game (STERILE SQL)
+    // -------------------------------
+    const sqlQuery = `
+      INSERT INTO games (
+        agentid,
+        ownerid,
+        players,
+        pot,
+        entryfee,
+        winmode,
+        cartelas,
+        called,
+        winnermoney,
+        profit,
+        date
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      RETURNING *;
+    `;
+
+    const result = await pool.query(sqlQuery, [
+      req.user.id,
+      ownerId,
+      players,
+      pot,
+      entryfee,
+      finalWinMode,
+      JSON.stringify(cartelas),
+      JSON.stringify([]),
+      finalWinnerMoney,
+      profit,
+      gameDate
+    ]);
+
     const gameId = result.rows[0].id;
-    // ... the rest of the route continues ...
-    // -------------------------------
-    // Link selected cartelas
-    // -------------------------------
-    if (cartelas && cartelas.length > 0) {
-      await pool.query(
-        `UPDATE cartelas 
-         SET issued = true, gameid = $1 
-         WHERE id = ANY($2)`,
-        [gameId, cartelas]
-      );
-    }
 
-    return res.json({ success: true, game: result.rows[0] });
+    // -------------------------------
+    // Link selected cartelas
+    // -------------------------------
+    if (cartelas && cartelas.length > 0) {
+      await pool.query(
+        `UPDATE cartelas
+         SET issued = true, gameid = $1
+         WHERE id = ANY($2)`,
+        [gameId, cartelas]
+      );
+    }
 
-  } catch (err) {
-    console.error("❌ Game creation error:", err);
-    res.status(500).json({ error: "Failed to create game", details: err.message });
-  }
+    return res.json({ success: true, game: result.rows[0] });
+
+  } catch (err) {
+    console.error("❌ Game creation error:", err);
+    res.status(500).json({ error: "Failed to create game", details: err.message });
+  }
 });
+
 
 // ✅ Agent: My Game History
 app.get("/api/games/my-history", authenticate("agent"), async (req, res) => {
