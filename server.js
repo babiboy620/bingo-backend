@@ -333,8 +333,10 @@ app.post("/api/games", authenticate("agent"), async (req, res) => {
     // -------------------------------
  // server.js, inside /api/games route
 // ...
-const sqlQuery = "INSERT INTO games (agentid, ownerid, players, pot, entryfee, winmode, cartelas, called, winnermoney, profit, date) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *";
-
+      const sqlQuery = `
+INSERT INTO games (agentid, ownerid, players, pot, entryfee, winmode, cartelas, called, winnermoney, profit, date)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+RETURNING *`;
 const result = await pool.query(
     sqlQuery,
 // ...
