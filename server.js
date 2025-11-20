@@ -319,12 +319,11 @@ app.post("/api/games", authenticate("agent"), async (req, res) => {
     }
     const ownerId = ownerResult.rows[0].id;
 
-    // -------------------------------
+  // -------------------------------
     // Create game
     // -------------------------------
     const result = await pool.query(
-      `INSERT INTO games
-        (agentid, ownerid, players, pot, entryfee, winmode, cartelas, called, winnermoney, profit, date)
+      `INSERT INTO games (agentid, ownerid, players, pot, entryfee, winmode, cartelas, called, winnermoney, profit, date)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        RETURNING *`,
       [
@@ -338,10 +337,9 @@ app.post("/api/games", authenticate("agent"), async (req, res) => {
         JSON.stringify([]),
         finalWinnerMoney,
         profit,
-        gameDate // <--- The guaranteed working Date object
+        gameDate // Using the clean Date object defined above
       ]
     );
-
     const gameId = result.rows[0].id;
 
     // -------------------------------
