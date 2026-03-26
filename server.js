@@ -160,7 +160,7 @@ app.post("/api/login", async (req, res) => {
 });
 
 // ✅ Owner: Create Agent
-app.post("/api/agents/create", authenticate, async (req, res) => {
+app.post("/api/agents/create", authenticate("owner"), async (req, res) => {
   try {
     // Only owner can create agents
     if (req.user.role !== "owner")
